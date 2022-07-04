@@ -240,42 +240,26 @@ func (g *Generator) Delete() gin.HandlerFunc {
 	}
 }
 
-// WIP: not fully implemented
-func (g *Generator) ReadableEndpoints(resource *gin.RouterGroup, resolvers ResolverFn) {
-	resource.GET("", g.List(resolvers))
-	resource.GET("/:"+g.Param, g.Fetch(), g.Render())
+// Handy function to create boilerplate handlers for CRUD operations.
+func (g *Generator) Handlers(resolvers ResolverFn, mergeFn MergerFn) *Handlers {
+	return &Handlers{
+		Param:  g.Param,
+		List:   g.List(resolvers),
+		Fetch:  g.Fetch(),
+		Create: g.Create(),
+		Update: g.Update(mergeFn),
+		Delete: g.Delete(),
+	}
 }
 
-// WIP: not fully implemented
-func (g *Generator) WritableEndpoints(resource *gin.RouterGroup, mergeFn MergerFn) {
-	resource.POST("", g.Create(), g.Render())
-	resource.PUT("/:"+g.Param, g.Fetch(), g.Update(mergeFn), g.Render())
-	resource.DELETE("/:"+g.Param, g.Fetch(), g.Delete())
-}
-
-// WIP: not fullimplemented
-func (g *Generator) ReadableAssociatedEndpoints(resource *gin.RouterGroup, assoc Association, resolvers ResolverFn) {
-	resource.GET("", g.ListAssociated(assoc, resolvers))
-	resource.GET("/:"+g.Param, g.FetchAssociated(assoc), g.Render())
-}
-
-// WIP: not implemented
-func (g *Generator) WritableAssociatedEndpoints(resource *gin.RouterGroup, assoc Association, mergeFn MergerFn) {
-	resource.POST("", g.CreateAssociated(assoc), g.Render())
-	resource.PUT("/:"+g.Param, g.Update(mergeFn), g.Render())
-	resource.DELETE("/:"+g.Param, g.Delete())
-}
-
-// WIP: Creates all routes for `/<plural>`
-func (g *Generator) CreateRoutes(app *gin.Engine, plural string, resolvers ResolverFn, mergeFn MergerFn) {
-	endpoint := app.Group("/" + plural)
-	g.ReadableEndpoints(endpoint, resolvers)
-	g.WritableEndpoints(endpoint, mergeFn)
-}
-
-// WIP: Creates all routes for `/<parentPlural>/:<parentGen.Param>/<plural>`
-func (g *Generator) CreateAssocatedRoutes(app *gin.Engine, parentPlural string, parentGen *Generator, assoc Association, plural string, resolvers ResolverFn, mergeFn MergerFn) {
-	endpoint := app.Group("/"+parentPlural+"/:"+parentGen.Param+"/"+plural, parentGen.Fetch())
-	g.ReadableAssociatedEndpoints(endpoint, assoc, resolvers)
-	g.WritableAssociatedEndpoints(endpoint, assoc, mergeFn)
+// Handy function to create boilderplate handlers for CRUD operations with associations.
+func (g *Generator) AssociatedHandlers(assoc Association, resolvers ResolverFn, mergerFn MergerFn) *Handlers {
+	return &Handlers{
+		Param:  g.Param,
+		List:   g.ListAssociated(assoc, resolvers),
+		Fetch:  g.FetchAssociated(assoc),
+		Create: g.CreateAssociated(assoc),
+		Update: g.Update(mergerFn),
+		Delete: g.Delete(),
+	}
 }

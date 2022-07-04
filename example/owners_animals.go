@@ -4,6 +4,7 @@ import "github.com/kennethklee/gin-gorm-rest/generator"
 
 var animalGenerator = generator.New(db, Animal{}, "animal")
 
+// Manually create associated handlers
 var ListOwnerAnimals = animalGenerator.ListAssociated(OwnerAnimalAssoc, nil)
 var RenderAnimal = animalGenerator.Render()
 var FetchOwnerAnimal = animalGenerator.FetchAssociated(OwnerAnimalAssoc)
@@ -12,7 +13,7 @@ var UpdateAnimal = animalGenerator.Update(mergeAnimals)
 var DeleteAnimal = animalGenerator.Delete()
 
 func init() {
-	ownerAnimals := app.Group("/owners/:owner/animals", FetchOwner)
+	ownerAnimals := app.Group("/owners/:owner/animals", ownerHandlers.Fetch)
 
 	ownerAnimals.GET("", ListOwnerAnimals)
 	ownerAnimals.POST("", CreateOwnerAnimal, RenderAnimal)
