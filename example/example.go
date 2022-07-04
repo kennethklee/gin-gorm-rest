@@ -5,12 +5,12 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
-	"github.com/kennethklee/gin-gorm-rest/helpers"
+	"github.com/kennethklee/gin-gorm-rest/generator"
 )
 
 var app = gin.Default()
 var db = connectDB()
-var g = helpers.New(db) // Create a new api generator
+var g = generator.New(db) // Create a new api generator
 
 func Start(listenAddr string) {
 	createData()
@@ -38,10 +38,10 @@ func createFixture(file string, models interface{}) error {
 }
 
 func createData() {
-	if err := createFixture("./helpers/fixtures/owners.json", &[]Owner{}); err != nil {
+	if err := createFixture("./generator/fixtures/owners.json", &[]Owner{}); err != nil {
 		panic(err)
 	}
-	if err := createFixture("./helpers/fixtures/animals.json", &[]Animal{}); err != nil {
+	if err := createFixture("./generato/fixtures/animals.json", &[]Animal{}); err != nil {
 		panic(err)
 	}
 }

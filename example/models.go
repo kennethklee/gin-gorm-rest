@@ -1,7 +1,7 @@
 package example
 
 import (
-	"github.com/kennethklee/gin-gorm-rest/helpers"
+	"github.com/kennethklee/gin-gorm-rest/generator"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -23,7 +23,7 @@ type Animal struct {
 	Age     int    `json:"age"`
 }
 
-var OwnerAnimalAssoc = helpers.Association{ParentName: "owner", Association: "Animals"}
+var OwnerAnimalAssoc = generator.Association{ParentName: "owner", Association: "Animals"}
 
 func connectDB() *gorm.DB {
 	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})

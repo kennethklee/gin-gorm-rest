@@ -1,6 +1,6 @@
 # gin-gorm-rest
 
-Simplistic golang gin &amp; gorm REST endpoint helpers
+Simplistic golang gin &amp; gorm REST endpoint helpers.
 
 Developers
 ----------
