@@ -1,0 +1,44 @@
+[
+    {
+        "id": 1,
+        "owner_id": 1,
+        "name": "Alfred",
+        "species": "cat",
+        "age": 2
+    },
+    {
+        "id": 2,
+        "owner_id": 1,
+        "name": "Bella",
+        "species": "dog",
+        "age": 1
+    },
+    {
+        "id": 3,
+        "owner_id": 1,
+        "name": "Charlie",
+        "species": "cat",
+        "age": 3
+    },
+    {
+        "id": 4,
+        "owner_id": 2,
+        "name": "Daisy",
+        "species": "dog",
+        "age": 2
+    },
+    {
+        "id": 5,
+        "owner_id": 2,
+        "name": "Ella",
+        "species": "cat",
+        "age": 1
+    },
+    {
+        "id": 6,
+        "owner_id": 3,
+        "name": "Fred",
+        "species": "cat",
+        "age": 3
+    }
+]
