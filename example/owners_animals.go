@@ -1,19 +1,23 @@
 package example
 
-var ListAnimals = g.ListAssociatedModels(OwnerAnimalAssoc, []Animal{}, nil)
-var RenderAnimal = g.RenderModel("animal")
-var FetchAnimal = g.FetchAssociatedModel(OwnerAnimalAssoc, Animal{}, "animal")
-var CreateAnimal = g.CreateAssociatedModel(OwnerAnimalAssoc, Animal{}, "animal")
-var UpdateAnimal = g.UpdateModel(Animal{}, "animal", mergeAnimals)
-var DeleteAnimal = g.DeleteModel("animal")
+import "github.com/kennethklee/gin-gorm-rest/generator"
+
+var animalGenerator = generator.New(db, Animal{}, "animal")
+
+var ListOwnerAnimals = animalGenerator.ListAssociated(OwnerAnimalAssoc, nil)
+var RenderAnimal = animalGenerator.Render()
+var FetchOwnerAnimal = animalGenerator.FetchAssociated(OwnerAnimalAssoc)
+var CreateOwnerAnimal = animalGenerator.CreateAssociated(OwnerAnimalAssoc)
+var UpdateAnimal = animalGenerator.Update(mergeAnimals)
+var DeleteAnimal = animalGenerator.Delete()
 
 func init() {
-	ownerAnimals := app.Group("/owners/:owner/animals", g.FetchModel(Owner{}, "owner"))
+	ownerAnimals := app.Group("/owners/:owner/animals", FetchOwner)
 
-	ownerAnimals.GET("", ListAnimals)
-	ownerAnimals.POST("", CreateAnimal, RenderAnimal)
-	ownerAnimals.GET("/:animal", FetchAnimal, RenderAnimal)
-	ownerAnimals.PUT("/:animal", FetchAnimal, UpdateAnimal, RenderAnimal)
+	ownerAnimals.GET("", ListOwnerAnimals)
+	ownerAnimals.POST("", CreateOwnerAnimal, RenderAnimal)
+	ownerAnimals.GET("/:animal", FetchOwnerAnimal, RenderAnimal)
+	ownerAnimals.PUT("/:animal", FetchOwnerAnimal, UpdateAnimal, RenderAnimal)
 	ownerAnimals.DELETE("/:animal", DeleteAnimal)
 }
 

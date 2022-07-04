@@ -11,13 +11,13 @@ type Owner struct {
 	ID   uint   `json:"id" gorm:"primary_key"`
 	Name string `json:"name"`
 
-	Animals []Animal `json:"animals" gorm:"foreignkey:OwnerID"`
+	Animals []Animal `json:"animals,omitempty" gorm:"foreignkey:OwnerID"`
 }
 
 type Animal struct {
 	ID      uint   `json:"id" gorm:"primary_key"`
 	OwnerID uint   `json:"owner_id"`
-	Owner   Owner  `json:"owner" gorm:"foreignkey:OwnerID"`
+	Owner   *Owner `json:"owner,omitempty" gorm:"foreignkey:OwnerID"`
 	Name    string `json:"name"`
 	Species string `json:"species"`
 	Age     int    `json:"age"`

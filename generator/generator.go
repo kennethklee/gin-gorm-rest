@@ -25,12 +25,19 @@ type ValidationErrorResponse struct {
 	Errors  map[string]string `json:"errors"`
 }
 
+type ResolverFn func(*gin.Context, *gorm.DB)
+type MergerFn func(src interface{}, dest interface{})
+
 type Generator struct {
-	DB *gorm.DB
+	DB     *gorm.DB
+	model  reflect.Type
+	models reflect.Type
+	Param  string
 }
 
-func New(db *gorm.DB) *Generator {
-	return &Generator{db}
+func New(db *gorm.DB, model interface{}, paramName string) *Generator {
+	mt := reflect.TypeOf(model)
+	return &Generator{DB: db, model: mt, models: reflect.SliceOf(mt), Param: paramName}
 }
 
 func (g *Generator) bindAndValidate(c *gin.Context, model interface{}) map[string]string {
@@ -51,9 +58,20 @@ func (g *Generator) bindAndValidate(c *gin.Context, model interface{}) map[strin
 	return nil
 }
 
-func (g *Generator) ListModels(models interface{}, resolvers func(*gin.Context, *gorm.DB)) gin.HandlerFunc {
+// Create an instance of model
+func (g *Generator) new() interface{} {
+	return reflect.New(g.model).Interface()
+}
+
+// Creates a slice of models
+func (g *Generator) newSlice() interface{} {
+	return reflect.New(g.models).Interface()
+}
+
+// Creates a listing handler. Resolvers is a function that can be used to fine-tune the queryset or add pagination.
+func (g *Generator) List(resolvers ResolverFn) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		instList := reflect.New(reflect.TypeOf(models)).Interface() // clone models
+		instList := g.newSlice()
 
 		// Resolvers
 		queryset := g.DB.Model(instList)
@@ -70,9 +88,10 @@ func (g *Generator) ListModels(models interface{}, resolvers func(*gin.Context, 
 	}
 }
 
-func (g *Generator) ListAssociatedModels(assoc Association, models interface{}, resolvers func(*gin.Context, *gorm.DB)) gin.HandlerFunc {
+// Creates an associated listing handler. This is used for child relationships of a parent association. Resolvers is a function that can be used to fine-tune the queryset or add pagination.
+func (g *Generator) ListAssociated(assoc Association, resolvers ResolverFn) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		instList := reflect.New(reflect.TypeOf(models)).Interface() // clone models
+		instList := g.newSlice()
 
 		// Resolvers
 		queryset := g.DB.Model(c.MustGet(assoc.ParentName))
@@ -89,9 +108,10 @@ func (g *Generator) ListAssociatedModels(assoc Association, models interface{}, 
 	}
 }
 
-func (g *Generator) RenderModel(name string) gin.HandlerFunc {
+// Creates a rendering handler. This is used for rendering a model to JSON
+func (g *Generator) Render() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if model, exists := c.Get(name); !exists {
+		if model, exists := c.Get(g.Param); !exists {
 			c.AbortWithStatus(http.StatusNotFound)
 		} else {
 			c.JSON(c.Writer.Status(), model)
@@ -99,49 +119,52 @@ func (g *Generator) RenderModel(name string) gin.HandlerFunc {
 	}
 }
 
-func (g *Generator) FetchModel(model interface{}, name string) gin.HandlerFunc {
+// Creates a handler to retrieve a single model and store it into the context.
+func (g *Generator) Fetch() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if c.Param(name) == "" {
+		if c.Param(g.Param) == "" {
 			c.AbortWithStatus(http.StatusNotFound)
 			return
 		}
 
-		inst := reflect.New(reflect.TypeOf(model)).Interface() // clone model
-		if err := g.DB.Take(inst, c.Param(name)).Error; errors.Is(err, gorm.ErrRecordNotFound) {
+		inst := g.new()
+		if err := g.DB.Take(inst, c.Param(g.Param)).Error; errors.Is(err, gorm.ErrRecordNotFound) {
 			c.AbortWithStatus(http.StatusNotFound)
 		} else if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		} else {
-			c.Set(name, inst)
+			c.Set(g.Param, inst)
 		}
 	}
 }
 
-func (g *Generator) FetchAssociatedModel(assoc Association, model interface{}, name string) gin.HandlerFunc {
+// Creates an associated handler that retrieves a child model from a parent relationship, then stores it into the context.
+func (g *Generator) FetchAssociated(assoc Association) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if c.Param(name) == "" {
+		if c.Param(g.Param) == "" {
 			c.AbortWithStatus(http.StatusNotFound)
 			return
 		}
 
-		inst := reflect.New(reflect.TypeOf(model)).Interface() // clone model
+		inst := g.new()
 
 		// FIXME: gorm doesn't return error when record not found, so do a COUNT first
-		if count := g.DB.Model(c.MustGet(assoc.ParentName)).Association(assoc.Association).Count(); count != 1 {
+		if count := g.DB.Model(c.MustGet(assoc.ParentName)).Where(c.Param(g.Param)).Association(assoc.Association).Count(); count != 1 {
 			c.AbortWithStatus(http.StatusNotFound)
-		} else if err := g.DB.Model(c.MustGet(assoc.ParentName)).Association(assoc.Association).Find(inst, c.Param(name)); errors.Is(err, gorm.ErrRecordNotFound) {
+		} else if err := g.DB.Model(c.MustGet(assoc.ParentName)).Association(assoc.Association).Find(inst, c.Param(g.Param)); errors.Is(err, gorm.ErrRecordNotFound) {
 			c.AbortWithStatus(http.StatusNotFound)
 		} else if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"message": err})
 		} else {
-			c.Set(name, inst)
+			c.Set(g.Param, inst)
 		}
 	}
 }
 
-func (g *Generator) CreateModel(model interface{}, name string) gin.HandlerFunc {
+// Creates a handler to create a model and store it into the context.
+func (g *Generator) Create() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		inst := reflect.New(reflect.TypeOf(model)).Interface() // clone model
+		inst := g.new()
 		if errs := g.bindAndValidate(c, inst); errs != nil {
 			c.AbortWithStatusJSON(http.StatusBadRequest, ValidationErrorResponse{"validation errors", errs})
 			return
@@ -153,13 +176,14 @@ func (g *Generator) CreateModel(model interface{}, name string) gin.HandlerFunc 
 		}
 
 		c.Status(http.StatusCreated)
-		c.Set(name, inst)
+		c.Set(g.Param, inst)
 	}
 }
 
-func (g *Generator) CreateAssociatedModel(assoc Association, model interface{}, name string) gin.HandlerFunc {
+// Creates an associated handler to create a child model from a parent relationship.
+func (g *Generator) CreateAssociated(assoc Association) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		inst := reflect.New(reflect.TypeOf(model)).Interface() // clone model
+		inst := g.new()
 		if errs := g.bindAndValidate(c, &inst); errs != nil {
 			c.AbortWithStatusJSON(http.StatusBadRequest, ValidationErrorResponse{"validation errors", errs})
 			return
@@ -176,14 +200,15 @@ func (g *Generator) CreateAssociatedModel(assoc Association, model interface{}, 
 		}
 
 		c.Status(http.StatusCreated)
-		c.Set(name, inst)
+		c.Set(g.Param, inst)
 	}
 }
 
-func (g *Generator) UpdateModel(model interface{}, name string, mergeFunc func(src interface{}, dest interface{})) gin.HandlerFunc {
+// Creates a handler that updates a single record and stores it into the context.
+func (g *Generator) Update(mergeFunc MergerFn) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		inst := reflect.New(reflect.TypeOf(model)).Interface() // clone model
-		dest := c.MustGet(name)
+		inst := g.new()
+		dest := c.MustGet(g.Param)
 
 		if errs := g.bindAndValidate(c, inst); errs != nil {
 			c.AbortWithStatusJSON(http.StatusBadRequest, ValidationErrorResponse{"validation errors", errs})
@@ -198,13 +223,14 @@ func (g *Generator) UpdateModel(model interface{}, name string, mergeFunc func(s
 			return
 		}
 
-		c.Set(name, dest)
+		c.Set(g.Param, dest)
 	}
 }
 
-func (g *Generator) DeleteModel(name string) gin.HandlerFunc {
+// Creates a deletion handler that deletes a model and responds with 204 No Content.
+func (g *Generator) Delete() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		model := c.MustGet(name)
+		model := c.MustGet(g.Param)
 		if err := g.DB.Delete(model).Error; err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 			return
@@ -214,32 +240,42 @@ func (g *Generator) DeleteModel(name string) gin.HandlerFunc {
 	}
 }
 
-// not implemented
-func (g *Generator) ReadableEndpoints(resource *gin.RouterGroup, model interface{}, name string, resolvers func(*gin.Context, *gorm.DB)) {
-	panic("not implemented")
-	// resource.GET("", g.ListModels(model, resolvers))
-	// resource.GET("/:"+name, g.FetchModel(model, name), g.RenderModel(name))
+// WIP: not fully implemented
+func (g *Generator) ReadableEndpoints(resource *gin.RouterGroup, resolvers ResolverFn) {
+	resource.GET("", g.List(resolvers))
+	resource.GET("/:"+g.Param, g.Fetch(), g.Render())
 }
 
-// not implemented
-func (g *Generator) WritableEndpoints(resource *gin.RouterGroup, model interface{}, name string, mergeFn func(src interface{}, dest interface{})) {
-	panic("not implemented")
-	// resource.POST("", g.CreateModel(model, name), g.RenderModel(name))
-	// resource.PUT("/:"+name, g.FetchModel(model, name), g.UpdateModel(model, name, mergeFn), g.RenderModel(name))
-	// resource.DELETE("/:"+name, g.FetchModel(model, name), g.DeleteModel(name))
+// WIP: not fully implemented
+func (g *Generator) WritableEndpoints(resource *gin.RouterGroup, mergeFn MergerFn) {
+	resource.POST("", g.Create(), g.Render())
+	resource.PUT("/:"+g.Param, g.Fetch(), g.Update(mergeFn), g.Render())
+	resource.DELETE("/:"+g.Param, g.Fetch(), g.Delete())
 }
 
-// not implemented
-func (g *Generator) ReadableAssociatedEndpoints(resource *gin.RouterGroup, assoc Association, model interface{}, name string, resolvers func(*gin.Context, *gorm.DB)) {
-	panic("not implemented")
-	// resource.GET("", g.ListAssociatedModels(assoc, model, resolvers))
-	// resource.GET("/:"+name, g.FetchAssociatedModel(assoc, model, name), g.RenderModel(name))
+// WIP: not fullimplemented
+func (g *Generator) ReadableAssociatedEndpoints(resource *gin.RouterGroup, assoc Association, resolvers ResolverFn) {
+	resource.GET("", g.ListAssociated(assoc, resolvers))
+	resource.GET("/:"+g.Param, g.FetchAssociated(assoc), g.Render())
 }
 
-// not implemented
-func (g *Generator) WritableAssociatedEndpoints(resource *gin.RouterGroup, assoc Association, model interface{}, name string, mergeFn func(src interface{}, dest interface{})) {
-	panic("not implemented")
-	// resource.POST("", g.CreateAssociatedModel(assoc, model, name), g.RenderModel(name))
-	// resource.PUT("/:"+name, g.UpdateModel(model, name, mergeFn), g.RenderModel(name))
-	// resource.DELETE("/:"+name, g.DeleteModel(name))
+// WIP: not implemented
+func (g *Generator) WritableAssociatedEndpoints(resource *gin.RouterGroup, assoc Association, mergeFn MergerFn) {
+	resource.POST("", g.CreateAssociated(assoc), g.Render())
+	resource.PUT("/:"+g.Param, g.Update(mergeFn), g.Render())
+	resource.DELETE("/:"+g.Param, g.Delete())
+}
+
+// WIP: Creates all routes for `/<plural>`
+func (g *Generator) CreateRoutes(app *gin.Engine, plural string, resolvers ResolverFn, mergeFn MergerFn) {
+	endpoint := app.Group("/" + plural)
+	g.ReadableEndpoints(endpoint, resolvers)
+	g.WritableEndpoints(endpoint, mergeFn)
+}
+
+// WIP: Creates all routes for `/<parentPlural>/:<parentGen.Param>/<plural>`
+func (g *Generator) CreateAssocatedRoutes(app *gin.Engine, parentPlural string, parentGen *Generator, assoc Association, plural string, resolvers ResolverFn, mergeFn MergerFn) {
+	endpoint := app.Group("/"+parentPlural+"/:"+parentGen.Param+"/"+plural, parentGen.Fetch())
+	g.ReadableAssociatedEndpoints(endpoint, assoc, resolvers)
+	g.WritableAssociatedEndpoints(endpoint, assoc, mergeFn)
 }
