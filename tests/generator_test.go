@@ -1,4 +1,4 @@
-package generator
+package generator_test
 
 import (
 	"encoding/json"
@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/kennethklee/gin-gorm-rest/generator"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -32,16 +33,16 @@ type Animal struct {
 	Age     int    `json:"age"`
 }
 
-var ownerAnimalAssoc = Association{"owner", "Animals"}
+var ownerAnimalAssoc = generator.Association{"owner", "Animals"}
 
 var origDB *gorm.DB
-var ownerGenerator *Generator
-var animalGenerator *Generator
+var ownerGenerator *generator.Generator
+var animalGenerator *generator.Generator
 
 func init() {
 	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{
 		// Logger: logger.Default.LogMode(logger.Info), // For debugging
-		Logger: logger.Default.LogMode(logger.Warn),
+		Logger: logger.Default.LogMode(logger.Silent),
 	})
 	if err != nil {
 		panic(err)
@@ -50,8 +51,8 @@ func init() {
 	db.AutoMigrate(Animal{})
 
 	origDB = db
-	ownerGenerator = New(db, Owner{}, "owner")
-	animalGenerator = New(db, Animal{}, "animal")
+	ownerGenerator = generator.New(db, Owner{}, "owner")
+	animalGenerator = generator.New(db, Animal{}, "animal")
 	gin.SetMode(gin.ReleaseMode) // omit gin-debug logs
 
 	createTestFixtures()
