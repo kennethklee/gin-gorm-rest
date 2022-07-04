@@ -1,4 +1,4 @@
-module github.com/kennethklee/gin-gorm-rest
+module github.com/kennethklee/gin-gorm-rest/generator
 
 go 1.18
 

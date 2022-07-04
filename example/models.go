@@ -1,8 +1,7 @@
-package example
+package main
 
 import (
 	"github.com/kennethklee/gin-gorm-rest/generator"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -26,10 +25,10 @@ type Animal struct {
 var OwnerAnimalAssoc = generator.Association{ParentName: "owner", Association: "Animals"}
 
 func connectDB() *gorm.DB {
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	if err != nil {
-		panic("failed to connect database")
-	}
+	// db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	// if err != nil {
+	// 	panic("failed to connect database")
+	// }
 
 	db.AutoMigrate(&Owner{})
 	db.AutoMigrate(&Animal{})

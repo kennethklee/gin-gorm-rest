@@ -1,4 +1,4 @@
-package example
+package main
 
 import "github.com/kennethklee/gin-gorm-rest/generator"
 
