@@ -15,13 +15,7 @@ func init() {
 	// Short form of the above would be:
 	// ownerHandlers.Register(app, "/owners")
 
-	// Alternatively you can use the following:
-	// var owner = generator.New(db, Owner{}, "owner")  // Typically goes top of file
-	// owners.GET("", owner.List())
-	// owners.POST("", owner.Create(), owner.Render())
-	// owners.GET("/:owner", owner.Fetch(), owner.Render())
-	// owners.PUT("/:owner", owner.Fetch(), owner.Update(), owner.Render())
-	// owners.DELETE("/:owner", owner.Delete())
+	// NOTE: you can use the generator directly like in animals.go
 }
 
 func mergeOwners(src, dest interface{}) {
