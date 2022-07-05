@@ -2,7 +2,7 @@ package main
 
 import "github.com/kennethklee/gin-gorm-rest/generator"
 
-var ownerHandlers = generator.New(db, Owner{}, "owner").Handlers(nil, mergeOwners)
+var ownerHandlers = generator.New(DB, Owner{}, "owner").Handlers(nil, mergeOwners)
 
 func init() {
 	owners := app.Group("/owners")

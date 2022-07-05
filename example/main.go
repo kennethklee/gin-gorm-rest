@@ -7,9 +7,8 @@ import "github.com/gin-gonic/gin"
  */
 
 var app = gin.Default()
-var db = createDB()
 
 // Start server
 func main() {
-	app.Run(listenAddr)
+	app.Run(":3000")
 }
