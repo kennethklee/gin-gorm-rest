@@ -13,11 +13,13 @@ type Handlers struct {
 }
 
 // Register boilderplate handler functions for CRUD operations.
-func (h *Handlers) Register(app *gin.Engine, path string, middlewares ...gin.HandlerFunc) {
+func (h *Handlers) Register(app *gin.Engine, path string, middlewares ...gin.HandlerFunc) *gin.RouterGroup {
 	group := app.Group(path, middlewares...)
 	group.GET("", h.List)
 	group.POST("", h.Create, h.Render)
 	group.GET("/:"+h.Param, h.Fetch, h.Render)
 	group.PUT("/:"+h.Param, h.Fetch, h.Update, h.Render)
 	group.DELETE("/:"+h.Param, h.Delete)
+
+	return group
 }
