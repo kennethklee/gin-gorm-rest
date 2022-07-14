@@ -25,8 +25,11 @@ type ValidationErrorResponse struct {
 	Errors  map[string]string `json:"errors"`
 }
 
-type ResolverFn func(*gin.Context, *gorm.DB)
-type MergerFn func(src interface{}, dest interface{})
+// ResolverFn resolves the queryset and returns whether to continue or not. Use the context to respond with errors if needed.
+type ResolverFn func(*gin.Context, *gorm.DB) (ok bool)
+
+// MergerFn provides a way to merge form input with the data model. It can also be used as extra validation besides the binding validator.
+type MergerFn func(src interface{}, dest interface{}) error
 
 type Generator struct {
 	DB     *gorm.DB
@@ -76,7 +79,9 @@ func (g *Generator) List(resolvers ResolverFn) gin.HandlerFunc {
 		// Resolvers
 		queryset := g.DB.Model(instList)
 		if resolvers != nil {
-			resolvers(c, queryset)
+			if ok := resolvers(c, queryset); !ok {
+				return
+			}
 		}
 
 		// Perform
@@ -216,7 +221,10 @@ func (g *Generator) Update(mergeFunc MergerFn) gin.HandlerFunc {
 		}
 
 		// Merge
-		mergeFunc(inst, dest)
+		if err := mergeFunc(inst, dest); err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+			return
+		}
 
 		if err := g.DB.Save(dest).Error; err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"message": err.Error()})

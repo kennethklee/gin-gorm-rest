@@ -35,10 +35,12 @@ func createDB() *gorm.DB {
 }
 
 // handles record updates
-func mergeUsers(src interface{}, dst interface{}) {
+func mergeUsers(src interface{}, dst interface{}) error {
 	srcUser := src.(*User)
 	dstUser := dst.(*User)
 	dstUser.Name = srcUser.Name
+
+	return nil
 }
 
 func main() {

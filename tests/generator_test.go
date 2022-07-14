@@ -143,8 +143,9 @@ func TestListModels(t *testing.T) {
 	context, resp := mockContext(req)
 
 	// test
-	animalGenerator.List(func(ctx *gin.Context, qs *gorm.DB) {
+	animalGenerator.List(func(ctx *gin.Context, qs *gorm.DB) bool {
 		qs = qs.Limit(2).Order("id asc")
+		return true
 	})(context)
 
 	// check response
@@ -187,8 +188,9 @@ func TestListAssociatedModels(t *testing.T) {
 	context.Set("owner", Owner{ID: 1})
 
 	// test
-	animalGenerator.ListAssociated(ownerAnimalAssoc, func(ctx *gin.Context, qs *gorm.DB) {
+	animalGenerator.ListAssociated(ownerAnimalAssoc, func(ctx *gin.Context, qs *gorm.DB) bool {
 		qs = qs.Limit(2).Order("id asc")
+		return true
 	})(context)
 
 	// check response
@@ -381,10 +383,11 @@ func TestUpdateModel(t *testing.T) {
 	context, resp := mockContext(req)
 	context.Set("animal", &Animal{ID: 1})
 
-	animalGenerator.Update(func(src, dest interface{}) {
+	animalGenerator.Update(func(src, dest interface{}) error {
 		srcVendor := src.(*Animal)
 		destVendor := dest.(*Animal)
 		destVendor.Name = srcVendor.Name
+		return nil
 	})(context)
 
 	if context.Writer.Status() != http.StatusOK {

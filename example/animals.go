@@ -29,17 +29,21 @@ func init() {
 }
 
 // When performing a PUT, we need to merge the input data with the existing data
-func mergeAnimals(src, dest interface{}) {
+func mergeAnimals(src, dest interface{}) error {
 	srcAnimal := src.(*Animal)
 	destAnimal := dest.(*Animal)
 
 	destAnimal.Name = srcAnimal.Name
 	destAnimal.Species = srcAnimal.Species
 	destAnimal.Age = srcAnimal.Age
+
+	return nil
 }
 
 // When listing, we need to resolve query params. We can also use this to do pagination or limit results or even set headers
-func animalResolvers(ctx *gin.Context, queryset *gorm.DB) {
+func animalResolvers(ctx *gin.Context, queryset *gorm.DB) (ok bool) {
+	ok = true
+
 	// Let's add some sort of search
 	if search := ctx.Query("search"); search != "" {
 		startsWith := search + "%"
@@ -57,4 +61,6 @@ func animalResolvers(ctx *gin.Context, queryset *gorm.DB) {
 	} else {
 		ctx.Header("X-Total-Count", fmt.Sprintf("%d", count))
 	}
+
+	return
 }

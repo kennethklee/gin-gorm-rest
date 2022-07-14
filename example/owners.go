@@ -18,8 +18,10 @@ func init() {
 	// NOTE: you can use the generator directly like in animals.go
 }
 
-func mergeOwners(src, dest interface{}) {
+func mergeOwners(src, dest interface{}) error {
 	srcOwner := src.(*Owner)
 	destOwner := dest.(*Owner)
 	destOwner.Name = srcOwner.Name
+
+	return nil
 }
